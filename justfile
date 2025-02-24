@@ -2,22 +2,22 @@ default:
   just --list
 
 run *args:
-  poetry run uvicorn src.main:app --reload {{args}}
+  uv run uvicorn src.main:app --reload {{args}}
 
 mm *args:
-  poetry run alembic revision --autogenerate -m "{{args}}"
+  uv run alembic revision --autogenerate -m "{{args}}"
 
 migrate:
-  poetry run alembic upgrade head
+  uv run alembic upgrade head
 
 downgrade *args:
-  poetry run alembic downgrade {{args}}
+  uv run alembic downgrade {{args}}
 
 ruff *args:
-  poetry run ruff check {{args}} src
+  uv run ruff check {{args}} src
 
 lint:
-  poetry run ruff format src
+  uv run ruff format src
   just ruff --fix
 
 # docker
