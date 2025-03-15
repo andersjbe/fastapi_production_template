@@ -23,6 +23,9 @@ dependencies = [
     "sentry-sdk<3.0.0,>=2.5.1",
     "sqlalchemy[asyncio]<3.0.0,>=2.0.30",
     "sqlmodel>=0.0.22",
+    "passlib>=1.7.4",
+    "argon2-cffi>=23.1.0",
+    "starsessions[redis]>=2.2.1",
 ]
 name = "fastapi-template"
 version = "0.1.0"

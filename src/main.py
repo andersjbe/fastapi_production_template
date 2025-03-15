@@ -2,26 +2,35 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 import sentry_sdk
+
 from fastapi import FastAPI, Depends
+from redis.asyncio import Redis
 from sqlalchemy import text
 from starlette.middleware.cors import CORSMiddleware
-from sqlalchemy.ext.asyncio import AsyncSession
+from starsessions import CookieStore, SessionMiddleware, SessionAutoloadMiddleware
+from starsessions.stores.redis import RedisStore
 
 from src.config import app_configs, settings
-from src.database import sessionmanager, get_db
+from src.models import create_tables, get_session
+from src.routers.auth import auth_router
+
+redis = Redis.from_url(settings.REDIS_URL)
+session_store = RedisStore(connection=redis, prefix="ds_session")
 
 
 @asynccontextmanager
 async def lifespan(_application: FastAPI) -> AsyncGenerator:
     # Startup
-    await sessionmanager.init_db()
+    await create_tables()
     yield
     # Shutdown
-    await sessionmanager.close()
+    await redis.close()
 
 
 app = FastAPI(**app_configs, lifespan=lifespan)
 
+app.add_middleware(SessionAutoloadMiddleware)
+app.add_middleware(SessionMiddleware, store=session_store)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -37,9 +46,16 @@ if settings.ENVIRONMENT.is_deployed:
         environment=settings.ENVIRONMENT,
     )
 
+app.include_router(auth_router)
+
+
+@app.get("/")
+async def welcome() -> str:
+    return "Welcome to the DevSheets API!"
+
 
 @app.get("/healthcheck", include_in_schema=False)
-async def healthcheck(session: AsyncSession = Depends(get_db)) -> dict[str, str]:
-    db_test = await session.execute(text("SELECT 'Connected to DB'"))
+async def healthcheck(session=Depends(get_session)) -> dict[str, str]:
+    db_test = await session.execute(text("SELECT * FROM information_schema.tables"))
 
     return {"status": "ok", "database": str(db_test.first())}
